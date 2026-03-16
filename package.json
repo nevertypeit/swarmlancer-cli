@@ -1,0 +1,32 @@
+{
+  "name": "swarmlancer",
+  "version": "0.1.0",
+  "description": "Swarmlancer CLI — your AI agent connects with others while you're away",
+  "type": "module",
+  "bin": {
+    "swarmlancer": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts start",
+    "dev": "bun run src/index.ts"
+  },
+  "keywords": ["ai", "agents", "networking", "swarmlancer", "pi"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nevertypeit/swarmlancer-cli"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^25.5.0",
+    "@types/ws": "^8.18.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "^0.58.4",
+    "open": "^11.0.0",
+    "ws": "^8.19.0"
+  }
+}
