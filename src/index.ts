@@ -4,6 +4,7 @@ import { login } from "./login";
 import { startAgent } from "./agent";
 import { getConfig, ensureAgentFile, getAgentFilePath, getConfigDir } from "./config";
 import { initInference, getAvailableModels } from "./inference";
+import { showProfile, editProfile } from "./profile";
 
 const BANNER = `
   ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗
@@ -12,27 +13,23 @@ const BANNER = `
   ╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╔╝██║
   ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║
   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝
-  Swarmlancer — your agent, your rules
+  swarmlancer.com — your agent, your rules
 `;
 
 const HELP = `
 Usage: swarmlancer <command>
 
-Commands:
-  login                    Authenticate with GitHub
+  login                    Sign in with GitHub
+  profile                  View your public profile
+  profile edit             Edit your public profile
+  agent                    Edit agent instructions (~/.swarmlancer/agent.md)
+  models                   List available LLM models
   start                    Start your agent
-  setup                    Open agent instructions for editing
-  models                   List available models (from pi credentials)
-  status                   Show current config
-
-Options:
-  --server <url>           Server URL (default: http://localhost:3001)
-  --model <pattern>        Model to use (e.g. "haiku", "flash", "gpt-4o-mini")
+  start --model <pattern>  Start with a specific model (e.g. "sonnet", "flash")
 
 Prerequisites:
-  Install pi and authenticate with at least one provider:
-    npm install -g @mariozechner/pi-coding-agent
-    pi   (then /login to authenticate with Anthropic, OpenAI, Google, etc.)
+  1. Install pi:  npm install -g @mariozechner/pi-coding-agent
+  2. Run pi, then /login to authenticate with Anthropic, OpenAI, Google, Ollama, etc.
 `;
 
 function parseFlags(args: string[]): Record<string, string> {
@@ -49,6 +46,7 @@ function parseFlags(args: string[]): Record<string, string> {
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
+  const subcommand = args[1];
   const flags = parseFlags(args.slice(1));
 
   switch (command) {
@@ -57,36 +55,18 @@ async function main() {
       await login();
       break;
 
-    case "start": {
-      console.log(BANNER);
-      ensureAgentFile();
-      const config = getConfig();
-      if (!config.token) {
-        console.error("  Not logged in. Run: swarmlancer login\n");
-        process.exit(1);
+    case "profile":
+      if (subcommand === "edit") {
+        await editProfile();
+      } else {
+        await showProfile();
       }
-
-      // Init pi-powered inference
-      console.log("  Detecting pi credentials...");
-      try {
-        const { model } = await initInference(flags.model);
-        console.log(`  ✓ Model: ${model.provider}/${model.id} (${model.name})`);
-      } catch (err) {
-        console.error(`  ✗ ${err instanceof Error ? err.message : err}`);
-        process.exit(1);
-      }
-
-      console.log(`  ✓ Server: ${config.serverUrl}`);
-      console.log(`  ✓ Agent:  ${getAgentFilePath()}`);
-
-      startAgent();
       break;
-    }
 
-    case "setup":
+    case "agent":
       ensureAgentFile();
-      console.log(`\n  Agent instructions file: ${getAgentFilePath()}`);
-      console.log("  Edit this file to control how your agent behaves.\n");
+      console.log(`\n  Agent instructions: ${getAgentFilePath()}`);
+      console.log("  This file controls how your agent behaves. It never leaves your machine.\n");
       try {
         const editor = process.env.EDITOR || "nano";
         const { execSync } = await import("child_process");
@@ -97,26 +77,42 @@ async function main() {
       break;
 
     case "models": {
-      console.log("\n  Available models (from pi credentials):\n");
+      console.log("\n  Available models (from your pi credentials):\n");
       try {
         await initInference();
         const models = await getAvailableModels();
         for (const m of models) {
           console.log(`    ${m.provider}/${m.id}`);
         }
-        console.log(`\n  Use --model <pattern> with 'swarmlancer start' to pick one.\n`);
+        console.log(`\n  Use: swarmlancer start --model <pattern>\n`);
       } catch (err) {
         console.error(`  ${err instanceof Error ? err.message : err}\n`);
       }
       break;
     }
 
-    case "status": {
+    case "start": {
+      console.log(BANNER);
+      ensureAgentFile();
       const config = getConfig();
-      console.log(`\n  Server:  ${config.serverUrl}`);
-      console.log(`  Auth:    ${config.token ? "✓ logged in" : "✗ not logged in"}`);
-      console.log(`  Config:  ${getConfigDir()}`);
-      console.log(`  Agent:   ${getAgentFilePath()}\n`);
+      if (!config.token) {
+        console.error("  Not logged in. Run: swarmlancer login\n");
+        process.exit(1);
+      }
+
+      console.log("  Detecting pi credentials...");
+      try {
+        const { model } = await initInference(flags.model);
+        console.log(`  ✓ Model:  ${model.provider}/${model.id} (${model.name})`);
+      } catch (err) {
+        console.error(`  ✗ ${err instanceof Error ? err.message : err}`);
+        process.exit(1);
+      }
+
+      console.log(`  ✓ Server: ${config.serverUrl}`);
+      console.log(`  ✓ Agent:  ${getAgentFilePath()}`);
+
+      startAgent();
       break;
     }
 
